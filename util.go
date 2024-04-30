@@ -39,6 +39,32 @@ func parsePtyRequest(s []byte) (pty Pty, ok bool) {
 	return
 }
 
+func parseX11Request(s []byte) (x11 X11, ok bool) {
+	single, s, ok := parseBool(s)
+	if !ok {
+		return
+	}
+	protocol, s, ok := parseString(s)
+	if !ok {
+		return
+	}
+	data, s, ok := parseString(s)
+	if !ok {
+		return
+	}
+	screen, _, ok := parseUint32(s)
+	if !ok {
+		return
+	}
+	x11 = X11{
+		SingleConnection: single,
+		AuthProtocol: protocol,
+		AuthData: data,
+		ScreenNumber: int(screen),
+	}
+	return
+}
+
 func parseWinchRequest(s []byte) (win Window, ok bool) {
 	width32, s, ok := parseUint32(s)
 	if width32 < 1 {
@@ -80,4 +106,11 @@ func parseUint32(in []byte) (uint32, []byte, bool) {
 		return 0, nil, false
 	}
 	return binary.BigEndian.Uint32(in), in[4:], true
+}
+
+func parseBool(in []byte) (bool, []byte, bool) {
+	if len(in) < 1 {
+		return false, nil, false
+	}
+	return uint8(in[0]) == 1, in[1:], true
 }

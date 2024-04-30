@@ -69,6 +69,10 @@ type Session interface {
 	// of whether or not a PTY was accepted for this session.
 	Pty() (Pty, <-chan Window, bool)
 
+	// X11 returns X11 forwarding information, and a boolean
+	// of whether or not an X11 forwarding request was accepted for this session.
+	X11() (X11, bool)
+
 	// Signals registers a channel to receive signals sent from the client. The
 	// channel must handle signal sends or it will block the SSH request loop.
 	// Registering nil will unregister the channel from signal sends. During the
@@ -99,6 +103,7 @@ func DefaultSessionHandler(srv *Server, conn *gossh.ServerConn, newChan gossh.Ne
 		conn:              conn,
 		handler:           srv.Handler,
 		ptyCb:             srv.PtyCallback,
+		x11Cb:             srv.X11ForwardingCallback,
 		sessReqCb:         srv.SessionRequestCallback,
 		subsystemHandlers: srv.SubsystemHandlers,
 		ctx:               ctx,
@@ -115,9 +120,11 @@ type session struct {
 	handled           bool
 	exited            bool
 	pty               *Pty
+	x11               *X11
 	winch             chan Window
 	env               []string
 	ptyCb             PtyCallback
+	x11Cb             X11ForwardingCallback
 	sessReqCb         SessionRequestCallback
 	rawCmd            string
 	subsystem         string
@@ -212,6 +219,13 @@ func (sess *session) Pty() (Pty, <-chan Window, bool) {
 		return *sess.pty, sess.winch, true
 	}
 	return Pty{}, sess.winch, false
+}
+
+func (sess *session) X11() (X11, bool) {
+	if sess.x11 != nil {
+		return *sess.x11, true
+	}
+	return X11{}, false
 }
 
 func (sess *session) Signals(c chan<- Signal) {
@@ -340,6 +354,28 @@ func (sess *session) handleRequests(reqs <-chan *gossh.Request) {
 				// when reqs is closed
 				close(sess.winch)
 			}()
+			req.Reply(ok, nil)
+		case x11RequestType:
+			// X11 forwarding requires injecting environment variables
+			// into the shell started by the session. It can only be done
+			// once, before the session has been handled.
+			if sess.handled || sess.x11 != nil {
+				req.Reply(false, nil)
+				continue
+			}
+			x11Req, ok := parseX11Request(req.Payload)
+			if !ok {
+				req.Reply(false, nil)
+				continue
+			}
+			if sess.x11Cb != nil {
+				ok := sess.x11Cb(sess.ctx, x11Req)
+				if !ok {
+					req.Reply(false, nil)
+					continue
+				}
+			}
+			sess.x11 = &x11Req
 			req.Reply(ok, nil)
 		case "window-change":
 			if sess.pty == nil {

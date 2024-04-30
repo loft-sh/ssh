@@ -75,6 +75,17 @@ func NoPty() Option {
 	}
 }
 
+// NoX11Forwarding returns a functional option that sets X11ForwardingCallback to return false,
+// denying X11 forwarding requests.
+func NoX11Forwarding() Option {
+	return func(srv *Server) error {
+		srv.X11ForwardingCallback = func(ctx Context, x11 X11) bool {
+			return false
+		}
+		return nil
+	}
+}
+
 // WrapConn returns a functional option that sets ConnCallback on the server.
 func WrapConn(fn ConnCallback) Option {
 	return func(srv *Server) error {

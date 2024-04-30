@@ -42,6 +42,7 @@ type Server struct {
 	PasswordHandler               PasswordHandler               // password authentication handler
 	PublicKeyHandler              PublicKeyHandler              // public key authentication handler
 	PtyCallback                   PtyCallback                   // callback for allowing PTY sessions, allows all if nil
+	X11ForwardingCallback         X11ForwardingCallback         // callback for allowing X11 display forwarding (x11-req), denies all if nil
 	ConnCallback                  ConnCallback                  // optional callback for wrapping net.Conn before handling
 	LocalPortForwardingCallback   LocalPortForwardingCallback   // callback for allowing local port forwarding, denies all if nil
 	LocalUnixForwardingCallback   LocalUnixForwardingCallback   // callback for allowing local unix forwarding (direct-streamlocal@openssh.com), denies all if nil

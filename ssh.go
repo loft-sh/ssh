@@ -47,6 +47,9 @@ type KeyboardInteractiveHandler func(ctx Context, challenger gossh.KeyboardInter
 // PtyCallback is a hook for allowing PTY sessions.
 type PtyCallback func(ctx Context, pty Pty) bool
 
+// X11ForwardingCallback is a hook for allowing X11 forwarding (x11-req)
+type X11ForwardingCallback func(ctx Context, x11 X11) bool
+
 // SessionRequestCallback is a callback for allowing or denying SSH sessions.
 type SessionRequestCallback func(sess Session, requestType string) bool
 
@@ -87,6 +90,14 @@ type Pty struct {
 	Term   string
 	Window Window
 	// HELP WANTED: terminal modes!
+}
+
+// X11 represents an X11 forwarding request and configuration.
+type X11 struct {
+	SingleConnection bool
+	AuthProtocol     string
+	AuthData         string
+	ScreenNumber     int
 }
 
 // Serve accepts incoming SSH connections on the listener l, creating a new
